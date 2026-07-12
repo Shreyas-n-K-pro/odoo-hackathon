@@ -54,7 +54,7 @@ function App() {
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<AppShell><DashboardPage /></AppShell>} />
             <Route path="/vehicles" element={<AppShell><Vehicles /></AppShell>} />
             <Route path="/drivers" element={<AppShell><Drivers /></AppShell>} />
             <Route path="/trips" element={<AppShell><Trips /></AppShell>} />

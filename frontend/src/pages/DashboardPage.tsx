@@ -1,253 +1,213 @@
 import React from 'react';
-import { BarChart, Bar, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { MainLayout } from '../layouts/MainLayout';
-import { Card, KPICard } from '../components/Card';
-import { StatusBadge } from '../components/StatusBadge';
-import { useAuth } from '../contexts/AuthContext';
-import { getMockKPIs, getSmartDispatchRecommendation, getOperationalInsights, mockTrips } from '../services/mockData';
-import { formatCurrency } from '../utils/helpers';
-import { AlertCircle, TrendingUp, Zap, AlertTriangle } from 'lucide-react';
+import {
+  BarChart, Bar, PieChart, Pie, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell
+} from 'recharts';
+// @ts-ignore
+import { useAuth } from '../hooks/useAuth';
+
+const COLORS = {
+  available:   '#10B981',
+  onTrip:      '#3B82F6',
+  maintenance: '#F97316',
+};
+
+const kpiData = [
+  { label: 'Total Vehicles',   value: 12,   icon: '🚚' },
+  { label: 'Available',        value: 7,    icon: '✅' },
+  { label: 'Active Trips',     value: 4,    icon: '🛣️'  },
+  { label: 'Drivers On Duty',  value: 9,    icon: '👤' },
+];
+
+const vehicleStatusData = [
+  { name: 'Available',    value: 7,  fill: COLORS.available },
+  { name: 'On Trip',      value: 4,  fill: COLORS.onTrip },
+  { name: 'Maintenance',  value: 1,  fill: COLORS.maintenance },
+];
+
+const monthlyFuelData = [
+  { month: 'Jan', fuel: 210000 },
+  { month: 'Feb', fuel: 185000 },
+  { month: 'Mar', fuel: 230000 },
+  { month: 'Apr', fuel: 197000 },
+  { month: 'May', fuel: 245000 },
+  { month: 'Jun', fuel: 285000 },
+  { month: 'Jul', fuel: 312000 },
+];
+
+const tripData = [
+  { month: 'Jan', trips: 45 },
+  { month: 'Feb', trips: 52 },
+  { month: 'Mar', trips: 48 },
+  { month: 'Apr', trips: 61 },
+  { month: 'May', trips: 55 },
+  { month: 'Jun', trips: 67 },
+];
+
+const recentTrips = [
+  { id: 1, route: 'Mumbai → Pune',     status: 'Completed', km: 148, revenue: '₹12,400' },
+  { id: 2, route: 'Pune → Nashik',     status: 'In Transit', km: 212, revenue: '₹18,700' },
+  { id: 3, route: 'Mumbai → Nagpur',   status: 'Scheduled', km: 830, revenue: '₹65,200' },
+];
+
+const alerts = [
+  { type: 'warning', title: 'License Expiry',   msg: "Driver Akshay's license expires in 4 days" },
+  { type: 'info',    title: 'Maintenance Due',   msg: 'Vehicle MH04-T1234 due for service in 600 km' },
+  { type: 'success', title: 'Trip Completed',    msg: 'Mumbai → Pune completed successfully' },
+];
+
+const alertColors: Record<string, string> = {
+  warning: 'border-amber-500/30 bg-amber-500/5 text-amber-300',
+  info:    'border-blue-500/30 bg-blue-500/5 text-blue-300',
+  success: 'border-green-500/30 bg-green-500/5 text-green-300',
+};
+
+const statusBadge = (status: string) => {
+  const map: Record<string, string> = {
+    'Completed':  'bg-green-500/20 text-green-300',
+    'In Transit': 'bg-blue-500/20 text-blue-300',
+    'Scheduled':  'bg-amber-500/20 text-amber-300',
+    'Cancelled':  'bg-red-500/20 text-red-300',
+  };
+  return `inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${map[status] ?? 'bg-gray-500/20 text-gray-300'}`;
+};
 
 export const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
-  const kpis = getMockKPIs();
-  const dispatch = getSmartDispatchRecommendation('Mumbai');
-  const insights = getOperationalInsights();
-  const vehicleStatusData = [
-    { name: 'Available', value: kpis.availableVehicles, fill: '#1F7A43' },
-    { name: 'On Trip', value: kpis.vehiclesOnTrip, fill: '#006D86' },
-    { name: 'Maintenance', value: kpis.vehiclesInMaintenance, fill: '#B57600' },
-  ];
-
-  const monthlyFuelData = [
-    { month: 'Jun', fuel: 285000 },
-    { month: 'Jul', fuel: 312000 },
-  ];
-
-  const tripData = [
-    { month: 'Jan', trips: 45 },
-    { month: 'Feb', trips: 52 },
-    { month: 'Mar', trips: 48 },
-    { month: 'Apr', trips: 61 },
-    { month: 'May', trips: 55 },
-    { month: 'Jun', trips: 67 },
-  ];
+  const { user } = useAuth() as { user: { name?: string; role?: string } | null };
 
   return (
-    <MainLayout>
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-light-primary-text dark:text-dark-primary-text mb-2">
-          Welcome back, {user?.name}!
+    <div className="p-4 md:p-6 animate-fade-in space-y-6">
+
+      {/* Welcome */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">
+          Welcome back, {user?.name ?? 'User'}! 👋
         </h1>
-        <p className="text-light-secondary-text dark:text-dark-secondary-text">
-          Here's your fleet overview for today
-        </p>
+        <p className="text-gray-400 text-sm mt-1">Here's your fleet overview for today</p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KPICard title="Total Vehicles" value={kpis.totalVehicles} icon="🚚" />
-        <KPICard title="Available" value={kpis.availableVehicles} icon="✓" trend="up" trendValue="+1" />
-        <KPICard title="Active Trips" value={kpis.activeTrips} icon="🚛" />
-        <KPICard title="Drivers On Duty" value={kpis.driversOnDuty} icon="👤" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiData.map((kpi) => (
+          <div key={kpi.label} className="glass-card p-4">
+            <p className="text-2xl mb-1">{kpi.icon}</p>
+            <p className="text-2xl font-bold text-white">{kpi.value}</p>
+            <p className="text-gray-400 text-xs mt-1">{kpi.label}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KPICard title="Fleet Utilization" value={`${kpis.fleetUtilization.toFixed(1)}%`} icon="📊" trend="up" trendValue="+5%" />
-        <KPICard title="Total Fuel Cost" value={formatCurrency(kpis.totalFuelCost)} icon="⛽" />
-        <KPICard title="Revenue" value={formatCurrency(kpis.revenue)} icon="💰" trend="up" trendValue="+12%" />
-        <KPICard title="Profit" value={formatCurrency(kpis.profit)} icon="📈" />
+      {/* Second row KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">📊</p>
+          <p className="text-2xl font-bold text-amber-400">58.3%</p>
+          <p className="text-gray-400 text-xs mt-1">Fleet Utilization</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">⛽</p>
+          <p className="text-2xl font-bold text-white">₹3.12L</p>
+          <p className="text-gray-400 text-xs mt-1">Fuel Cost (Jul)</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">💰</p>
+          <p className="text-2xl font-bold text-green-400">₹9.6L</p>
+          <p className="text-gray-400 text-xs mt-1">Revenue (Jul)</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">📈</p>
+          <p className="text-2xl font-bold text-white">₹6.48L</p>
+          <p className="text-gray-400 text-xs mt-1">Profit (Jul)</p>
+        </div>
       </div>
 
-      {/* Smart Widgets Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Smart Dispatch Recommendation */}
-        <Card className="lg:col-span-1">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text">
-              Smart Dispatch
-            </h2>
-            <Zap className="w-5 h-5 text-lime-500" />
-          </div>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text uppercase tracking-wide mb-1">Recommended Vehicle</p>
-              <p className="font-semibold text-teal-600">{dispatch.vehicleName}</p>
-            </div>
-            <div>
-              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text uppercase tracking-wide mb-1">Recommended Driver</p>
-              <p className="font-semibold text-teal-600">{dispatch.driverName}</p>
-            </div>
-            <div>
-              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text uppercase tracking-wide mb-2">Match Score</p>
-              <div className="w-full bg-light-divider dark:bg-dark-card rounded-full h-2">
-                <div className="bg-gradient-to-r from-teal-500 to-aqua-500 h-2 rounded-full" style={{width: `${dispatch.score}%`}}></div>
-              </div>
-              <p className="text-sm font-semibold text-center mt-1">{dispatch.score}%</p>
-            </div>
-            <div className="pt-2 border-t border-light-border dark:border-dark-border">
-              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text uppercase tracking-wide mb-2">Why?</p>
-              {dispatch.reasons.slice(0, 2).map((reason, i) => (
-                <p key={i} className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-1">✓ {reason}</p>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Fleet Health Score */}
-        <Card className="lg:col-span-1">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text">
-              Fleet Health
-            </h2>
-            <AlertCircle className="w-5 h-5 text-lime-500" />
-          </div>
-          <div className="text-center py-4">
-            <div className="text-5xl font-bold text-lime-500 mb-2">91</div>
-            <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm mb-4">/100</p>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-light-secondary-text dark:text-dark-secondary-text">
-                <span>Maintenance</span>
-                <span>95%</span>
-              </div>
-              <div className="flex justify-between text-light-secondary-text dark:text-dark-secondary-text">
-                <span>Fuel Efficiency</span>
-                <span>88%</span>
-              </div>
-              <div className="flex justify-between text-light-secondary-text dark:text-dark-secondary-text">
-                <span>Breakdowns</span>
-                <span>92%</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Operational Insights */}
-        <Card className="lg:col-span-1">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text">
-              Insights
-            </h2>
-            <TrendingUp className="w-5 h-5 text-teal-600" />
-          </div>
-          <div className="space-y-3">
-            {insights.slice(0, 3).map((insight, i) => (
-              <div key={i} className="pb-2 border-b border-light-border dark:border-dark-border last:border-0">
-                <p className="text-xs font-semibold text-light-primary-text dark:text-dark-primary-text">
-                  {insight.icon} {insight.title}
-                </p>
-                <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
-                  {insight.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Vehicle Status */}
-        <Card>
-          <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Vehicle Status</h2>
-          <ResponsiveContainer width="100%" height={250}>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Vehicle Status Pie */}
+        <div className="glass-card p-5">
+          <h2 className="text-base font-semibold text-white mb-4">Vehicle Status</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
                 data={vehicleStatusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({name, value}) => `${name}: ${value}`}
+                cx="50%" cy="50%"
                 outerRadius={80}
-                fill="#8884d8"
                 dataKey="value"
+                label={({ name, value }) => `${name}: ${value}`}
+                labelLine={false}
               >
-                {vehicleStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                {vehicleStatusData.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
                 ))}
               </Pie>
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
-        </Card>
+        </div>
 
-        {/* Monthly Fuel Cost */}
-        <Card>
-          <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Monthly Fuel Cost</h2>
-          <ResponsiveContainer width="100%" height={250}>
+        {/* Monthly Fuel Cost Bar */}
+        <div className="glass-card p-5">
+          <h2 className="text-base font-semibold text-white mb-4">Monthly Fuel Cost</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyFuelData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => formatCurrency(value as number)} />
-              <Bar dataKey="fuel" fill="#0F766E" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1E3766" />
+              <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
+              <Bar dataKey="fuel" fill="#F59E0B" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
-        </Card>
+        </div>
       </div>
 
-      {/* Trips Chart */}
-      <div className="grid grid-cols-1 gap-6 mb-8">
-        <Card>
-          <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Trips Per Month</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={tripData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="trips" stroke="#0F766E" strokeWidth={2} dot={{fill: '#0F766E'}} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
+      {/* Trips Line Chart */}
+      <div className="glass-card p-5">
+        <h2 className="text-base font-semibold text-white mb-4">Trips Per Month</h2>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={tripData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1E3766" />
+            <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+            <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="trips" stroke="#F59E0B" strokeWidth={2} dot={{ fill: '#F59E0B', r: 4 }} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Recent Trips & Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Trips */}
-        <Card>
-          <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Recent Trips</h2>
-          <div className="space-y-3">
-            {mockTrips.slice(0, 3).map((trip) => (
-              <div key={trip.id} className="pb-3 border-b border-light-border dark:border-dark-border last:border-0">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-light-primary-text dark:text-dark-primary-text">
-                    {trip.source} → {trip.destination}
-                  </p>
-                  <StatusBadge status={trip.status} />
+        <div className="glass-card p-5">
+          <h2 className="text-base font-semibold text-white mb-4">Recent Trips</h2>
+          <div className="divide-y divide-white/5">
+            {recentTrips.map((trip) => (
+              <div key={trip.id} className="py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">{trip.route}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{trip.km} km · {trip.revenue}</p>
                 </div>
-                <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
-                  {trip.plannedDistance}km • {formatCurrency(trip.revenue)}
-                </p>
+                <span className={statusBadge(trip.status)}>{trip.status}</span>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        {/* Upcoming Alerts */}
-        <Card>
-          <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            Alerts & Notifications
-          </h2>
+        {/* Alerts */}
+        <div className="glass-card p-5">
+          <h2 className="text-base font-semibold text-white mb-4">⚠️ Alerts & Notifications</h2>
           <div className="space-y-3">
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <p className="font-semibold text-xs text-yellow-900 dark:text-yellow-300">License Expiry Alert</p>
-              <p className="text-xs text-yellow-800 dark:text-yellow-300 mt-1">Driver Akshay's license expires in 4 days</p>
-            </div>
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="font-semibold text-xs text-blue-900 dark:text-blue-300">Maintenance Due</p>
-              <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">Vehicle 15 due for service in 600 km</p>
-            </div>
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="font-semibold text-xs text-green-900 dark:text-green-300">Trip Completed</p>
-              <p className="text-xs text-green-800 dark:text-green-300 mt-1">Mumbai → Pune trip completed successfully</p>
-            </div>
+            {alerts.map((a, i) => (
+              <div key={i} className={`p-3 rounded-lg border ${alertColors[a.type]}`}>
+                <p className="text-xs font-semibold">{a.title}</p>
+                <p className="text-xs mt-0.5 opacity-80">{a.msg}</p>
+              </div>
+            ))}
           </div>
-        </Card>
+        </div>
       </div>
-    </MainLayout>
+
+    </div>
   );
 };
