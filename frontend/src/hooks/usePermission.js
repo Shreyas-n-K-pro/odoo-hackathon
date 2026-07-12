@@ -3,12 +3,12 @@ import { useAuth } from './useAuth'
 // RBAC map mirrors backend constants.js — keep in sync
 const RBAC_MAP = {
   Fleet_Manager: {
-    fleet: 'edit', drivers: 'edit', trips: 'none',
+    fleet: 'edit', drivers: 'edit', trips: 'view',
     fuel: 'none', analytics: 'edit', dashboard: 'view',
     maintenance: 'edit', settings: 'edit',
   },
   Dispatcher: {
-    fleet: 'view', drivers: 'none', trips: 'edit',
+    fleet: 'view', drivers: 'view', trips: 'edit',
     fuel: 'none', analytics: 'none', dashboard: 'view',
     maintenance: 'view', settings: 'none',
   },

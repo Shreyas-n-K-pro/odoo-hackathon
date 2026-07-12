@@ -20,6 +20,8 @@ router.post('/', requirePermission('trips', 'edit'), validate(createTripSchema),
 
 router.patch('/:id/dispatch', requirePermission('trips', 'edit'), ctrl.dispatch);
 router.patch('/:id/complete', requirePermission('trips', 'edit'), validate(completeTripSchema), ctrl.complete);
-router.patch('/:id/cancel', requirePermission('trips', 'edit'), ctrl.cancel);
+router.patch('/:id/cancel',   requirePermission('trips', 'edit'), ctrl.cancel);
+router.delete('/:id',         requirePermission('trips', 'edit'), ctrl.remove);
+router.patch('/:id',          requirePermission('trips', 'edit'), validate(updateTripSchema), ctrl.update);
 
 module.exports = router;

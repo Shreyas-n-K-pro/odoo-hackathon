@@ -170,11 +170,33 @@ const cancelTrip = async (id) => {
   });
 };
 
+const updateTrip = async (id, data) => {
+  const trip = await prisma.trip.findUnique({ where: { id: parseInt(id) } });
+  if (!trip) throw new Error('Trip not found.');
+  if (trip.status !== 'Scheduled') throw new Error('Only Scheduled trips can be edited.');
+
+  return await prisma.trip.update({
+    where: { id: parseInt(id) },
+    data,
+    include: { vehicle: true, driver: true }
+  });
+};
+
+const removeTrip = async (id) => {
+  const trip = await prisma.trip.findUnique({ where: { id: parseInt(id) } });
+  if (!trip) throw new Error('Trip not found.');
+  if (trip.status !== 'Scheduled') throw new Error('Only Scheduled trips can be deleted.');
+
+  return await prisma.trip.delete({ where: { id: parseInt(id) } });
+};
+
 module.exports = {
   getTrips,
   getTripById,
   createTrip,
   dispatchTrip,
   completeTrip,
-  cancelTrip
+  cancelTrip,
+  updateTrip,
+  removeTrip
 };

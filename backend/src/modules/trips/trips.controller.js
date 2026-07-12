@@ -68,4 +68,28 @@ const cancel = async (req, res, next) => {
   }
 };
 
-module.exports = { getAll, getById, create, dispatch, complete, cancel };
+const update = async (req, res, next) => {
+  try {
+    const trip = await tripsService.updateTrip(req.params.id, req.body);
+    return sendSuccess(res, trip, 'Trip updated successfully.');
+  } catch (err) {
+    if (err.message.includes('not found') || err.message.includes('Scheduled')) {
+      return sendError(res, err.message, 400, 'UPDATE_ERROR');
+    }
+    next(err);
+  }
+};
+
+const remove = async (req, res, next) => {
+  try {
+    await tripsService.removeTrip(req.params.id);
+    return sendSuccess(res, null, 'Trip deleted successfully.');
+  } catch (err) {
+    if (err.message.includes('not found') || err.message.includes('Scheduled')) {
+      return sendError(res, err.message, 400, 'DELETE_ERROR');
+    }
+    next(err);
+  }
+};
+
+module.exports = { getAll, getById, create, dispatch, complete, cancel, update, remove };
