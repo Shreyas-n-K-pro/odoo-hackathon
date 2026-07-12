@@ -32,7 +32,7 @@ const RBAC_MAP = Object.freeze({
     fleet:       PERMISSION.EDIT,
     drivers:     PERMISSION.EDIT,
     trips:       PERMISSION.VIEW,
-    fuel:        PERMISSION.NONE,
+    fuel:        PERMISSION.VIEW,
     analytics:   PERMISSION.EDIT,
     dashboard:   PERMISSION.VIEW,
     maintenance: PERMISSION.EDIT,

@@ -57,6 +57,11 @@ enum MaintenanceType {
   Inspection
 }
 
+enum MaintenanceStatus {
+  Active
+  Completed
+}
+
 enum ExpenseCategory {
   Fuel
   Maintenance
@@ -97,6 +102,7 @@ model Vehicle {
   trips            Trip[]
   maintenanceLogs  MaintenanceLog[]
   fuelLogs         FuelLog[]
+  expenses         Expense[]
 
   @@map("vehicles")
 }
@@ -153,6 +159,7 @@ model Trip {
   vehicle  Vehicle   @relation(fields: [vehicleId], references: [id])
   driver   Driver    @relation(fields: [driverId], references: [id])
   expenses Expense[]
+  fuelLogs FuelLog[]
 
   @@map("trips")
 }
@@ -160,16 +167,17 @@ model Trip {
 // ─── Table: maintenance_logs (Member C) ──────────────────────────────────────
 
 model MaintenanceLog {
-  id            Int             @id @default(autoincrement())
-  vehicleId     Int             @map("vehicle_id")
+  id            Int               @id @default(autoincrement())
+  vehicleId     Int               @map("vehicle_id")
   type          MaintenanceType
-  description   String          @db.Text
-  cost          Decimal         @db.Decimal(12, 2)
-  servicedAt    DateTime        @map("serviced_at")
-  nextServiceAt DateTime?       @map("next_service_at")
+  description   String            @db.Text
+  cost          Decimal           @db.Decimal(12, 2)
+  status        MaintenanceStatus @default(Active)
+  servicedAt    DateTime          @map("serviced_at")
+  nextServiceAt DateTime?         @map("next_service_at")
   odometer      Int
-  vendor        String?         @db.VarChar(150)
-  createdAt     DateTime        @default(now()) @map("created_at")
+  vendor        String?           @db.VarChar(150)
+  createdAt     DateTime          @default(now()) @map("created_at")
 
   // Relations
   vehicle Vehicle @relation(fields: [vehicleId], references: [id])
@@ -182,6 +190,7 @@ model MaintenanceLog {
 model FuelLog {
   id          Int      @id @default(autoincrement())
   vehicleId   Int      @map("vehicle_id")
+  tripId      Int?     @map("trip_id")
   litres      Decimal  @db.Decimal(10, 2)
   pricePerLtr Decimal  @map("price_per_ltr") @db.Decimal(10, 2)
   totalCost   Decimal  @map("total_cost") @db.Decimal(12, 2)
@@ -192,6 +201,7 @@ model FuelLog {
 
   // Relations
   vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  trip    Trip?   @relation(fields: [tripId], references: [id])
 
   @@map("fuel_logs")
 }
@@ -201,6 +211,7 @@ model FuelLog {
 model Expense {
   id          Int             @id @default(autoincrement())
   tripId      Int?            @map("trip_id")
+  vehicleId   Int             @map("vehicle_id")
   category    ExpenseCategory
   amount      Decimal         @db.Decimal(12, 2)
   description String?         @db.VarChar(255)
@@ -208,7 +219,8 @@ model Expense {
   createdAt   DateTime        @default(now()) @map("created_at")
 
   // Relations
-  trip Trip? @relation(fields: [tripId], references: [id])
+  trip    Trip?   @relation(fields: [tripId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
 
   @@map("expenses")
 }

@@ -1,24 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TransitOps — Maintenance Routes
+// TransitOps — Expense Routes
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require('express');
 const router = express.Router();
 
-const ctrl = require('./maintenance.controller');
+const ctrl = require('./expense.controller');
 const { requireAuth } = require('../../middleware/auth.middleware');
 const { requirePermission } = require('../../middleware/rbac.middleware');
 const { validate } = require('../../middleware/validate.middleware');
-const { createMaintenanceSchema } = require('./maintenance.validation');
+const { createExpenseSchema } = require('./expense.validation');
 
 // All routes require valid JWT authentication
 router.use(requireAuth);
 
-// Read maintenance records — view permission required
-router.get('/',           requirePermission('maintenance', 'view'), ctrl.getAll);
+// Read expenses — view permission for fuel required
+router.get('/',  requirePermission('fuel', 'view'), ctrl.getAll);
 
-// Write operations — edit permission required
-router.post('/',          requirePermission('maintenance', 'edit'), validate(createMaintenanceSchema), ctrl.create);
-router.patch('/:id/close', requirePermission('maintenance', 'edit'), ctrl.close);
+// Write expenses — edit permission for fuel required
+router.post('/', requirePermission('fuel', 'edit'), validate(createExpenseSchema), ctrl.create);
 
 module.exports = router;

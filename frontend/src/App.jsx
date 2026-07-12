@@ -13,9 +13,11 @@ import Login      from './pages/Login'
 import Dashboard  from './pages/Dashboard'
 import Vehicles   from './pages/Vehicles'
 import Settings   from './pages/Settings'
-import Drivers    from './pages/Drivers'
-import Trips      from './pages/Trips'
-import { Maintenance, Fuel, Analytics } from './pages/StubPages'
+import Drivers     from './pages/Drivers'
+import Trips       from './pages/Trips'
+import Maintenance from './pages/Maintenance'
+import Fuel        from './pages/Fuel'
+import { Analytics } from './pages/StubPages'
 
 // ── App Shell Layout ──────────────────────────────────────────────────────────
 // Renders Sidebar + Topbar for all authenticated routes

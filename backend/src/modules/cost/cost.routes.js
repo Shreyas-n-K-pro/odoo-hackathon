@@ -1,24 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TransitOps — Maintenance Routes
+// TransitOps — Cost Routes
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require('express');
 const router = express.Router();
 
-const ctrl = require('./maintenance.controller');
+const ctrl = require('./cost.controller');
 const { requireAuth } = require('../../middleware/auth.middleware');
 const { requirePermission } = require('../../middleware/rbac.middleware');
-const { validate } = require('../../middleware/validate.middleware');
-const { createMaintenanceSchema } = require('./maintenance.validation');
 
-// All routes require valid JWT authentication
 router.use(requireAuth);
 
-// Read maintenance records — view permission required
-router.get('/',           requirePermission('maintenance', 'view'), ctrl.getAll);
-
-// Write operations — edit permission required
-router.post('/',          requirePermission('maintenance', 'edit'), validate(createMaintenanceSchema), ctrl.create);
-router.patch('/:id/close', requirePermission('maintenance', 'edit'), ctrl.close);
+// Fleet-wide total cost
+router.get('/total', requirePermission('fuel', 'view'), ctrl.getTotal);
 
 module.exports = router;

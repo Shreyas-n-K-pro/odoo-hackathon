@@ -20,9 +20,12 @@ const { createVehicleSchema, updateVehicleSchema } = require('./vehicle.validati
 // All routes require a valid JWT
 router.use(requireAuth);
 
+const costCtrl = require('../cost/cost.controller');
+
 // Read operations — any authenticated role can view
 router.get('/',      requirePermission('fleet', 'view'), ctrl.getAll);
 router.get('/stats', requirePermission('fleet', 'view'), ctrl.getStats);
+router.get('/:id/operational-cost', requirePermission('fleet', 'view'), costCtrl.getVehicleCost);
 router.get('/:id',   requirePermission('fleet', 'view'), ctrl.getById);
 
 // Write operations — Fleet Manager only

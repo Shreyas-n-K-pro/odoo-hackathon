@@ -20,6 +20,8 @@ const driverRoutes      = require('./modules/drivers/drivers.routes');
 const tripRoutes        = require('./modules/trips/trips.routes');
 const maintenanceRoutes = require('./modules/maintenance/maintenance.routes');
 const fuelRoutes        = require('./modules/fuel/fuel.routes');
+const expenseRoutes     = require('./modules/expenses/expense.routes');
+const costRoutes        = require('./modules/cost/cost.routes');
 const analyticsRoutes   = require('./modules/analytics/analytics.routes');
 
 const app = express();
@@ -61,6 +63,9 @@ app.use('/api/drivers',     driverRoutes);
 app.use('/api/trips',       tripRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/fuel',        fuelRoutes);
+app.use('/api/fuel-logs',   fuelRoutes);
+app.use('/api/expenses',    expenseRoutes);
+app.use('/api/operational-cost', costRoutes);
 app.use('/api/analytics',   analyticsRoutes);
 
 // ── Error Handling (must be last) ────────────────────────────────────────────

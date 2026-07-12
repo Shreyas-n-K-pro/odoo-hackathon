@@ -1,20 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TransitOps — Fuel Routes (STUB for Member C)
+// TransitOps — Fuel Routes
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require('express');
 const router = express.Router();
+
+const ctrl = require('./fuel.controller');
 const { requireAuth } = require('../../middleware/auth.middleware');
 const { requirePermission } = require('../../middleware/rbac.middleware');
-const { sendSuccess } = require('../../utils/apiResponse');
+const { validate } = require('../../middleware/validate.middleware');
+const { createFuelLogSchema } = require('./fuel.validation');
 
+// All routes require valid JWT authentication
 router.use(requireAuth);
 
-router.get('/',     requirePermission('fuel', 'view'), (req, res) => {
-  sendSuccess(res, [], 'Fuel logs endpoint ready — Member C to implement.');
-});
-router.post('/',    requirePermission('fuel', 'edit'), (req, res) => {
-  sendSuccess(res, {}, 'Create fuel log — Member C to implement.', 201);
-});
+// Read fuel logs — view permission required
+router.get('/',  requirePermission('fuel', 'view'), ctrl.getAll);
+
+// Write fuel logs — edit permission required
+router.post('/', requirePermission('fuel', 'edit'), validate(createFuelLogSchema), ctrl.create);
 
 module.exports = router;
