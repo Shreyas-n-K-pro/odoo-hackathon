@@ -38,6 +38,10 @@ enum DriverStatus {
   Active
   On_Leave  @map("On Leave")
   Inactive
+  Available
+  On_Trip   @map("On Trip")
+  Off_Duty  @map("Off Duty")
+  Suspended
 }
 
 enum TripStatus {
@@ -118,6 +122,7 @@ model Driver {
   phone          String       @db.VarChar(20)
   status         DriverStatus @default(Active)
   region         String?      @db.VarChar(100)
+  safetyScore    Int          @default(100) @map("safety_score")
   totalTrips     Int          @default(0) @map("total_trips")
   createdAt      DateTime     @default(now()) @map("created_at")
 
@@ -139,6 +144,7 @@ model Trip {
   scheduledAt   DateTime   @map("scheduled_at")
   completedAt   DateTime?  @map("completed_at")
   distanceKm    Decimal?   @map("distance_km") @db.Decimal(10, 2)
+  cargoWeight   Decimal?   @map("cargo_weight") @db.Decimal(10, 2)
   status        TripStatus @default(Scheduled)
   notes         String?    @db.Text
   createdAt     DateTime   @default(now()) @map("created_at")

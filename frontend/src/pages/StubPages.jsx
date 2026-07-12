@@ -14,8 +14,6 @@ const StubPage = ({ title, owner, endpoint }) => (
   </div>
 )
 
-export const Drivers     = () => <StubPage title="Driver Management" owner="Member B" endpoint="GET /api/drivers" />
-export const Trips       = () => <StubPage title="Trip Dispatcher"   owner="Member B" endpoint="GET /api/trips" />
 export const Maintenance = () => <StubPage title="Maintenance Logs"  owner="Member C" endpoint="GET /api/maintenance" />
 export const Fuel        = () => <StubPage title="Fuel & Expenses"   owner="Member C" endpoint="GET /api/fuel" />
 export const Analytics   = () => <StubPage title="Analytics"         owner="Member D" endpoint="GET /api/analytics/summary" />

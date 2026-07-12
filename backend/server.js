@@ -8,6 +8,7 @@ const prisma = require('./src/config/database');
 const logger = require('./src/utils/logger');
 
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const startServer = async () => {
   try {
@@ -15,10 +16,11 @@ const startServer = async () => {
     await prisma.$connect();
     logger.info('✅ Database connection established');
 
-    app.listen(PORT, () => {
-      logger.info(`🚀 TransitOps API running on http://localhost:${PORT}`);
+    app.listen(PORT, HOST, () => {
+      logger.info(`🚀 TransitOps API running on http://${HOST}:${PORT}`);
       logger.info(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`❤️  Health check: http://localhost:${PORT}/health`);
+      logger.info(`🌐 LAN access: use http://<your-pc-ip>:${PORT}/health from another device on the same Wi-Fi`);
     });
   } catch (err) {
     logger.error('❌ Failed to connect to database:', err);
