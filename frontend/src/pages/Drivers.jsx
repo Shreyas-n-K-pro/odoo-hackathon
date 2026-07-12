@@ -40,7 +40,9 @@ export default function Drivers() {
       setModalOpen(false);
       fetchDrivers();
     } catch (err) {
-      alert('Failed to save driver');
+      const msg = err.response?.data?.message || 'Failed to save driver';
+      const details = err.response?.data?.details?.map(d => `${d.field}: ${d.message}`).join('\n') || '';
+      alert(`${msg}\n${details}`);
     }
   };
 
