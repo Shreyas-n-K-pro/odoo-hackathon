@@ -1,7 +1,8 @@
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 const logger = require('./logger');
 
 /**
- * Sends a transactional email using the Brevo API.
+ * Sends a transactional email using the Brevo SDK.
  * @param {Object} options
  * @param {string} options.to - Recipient email address
  * @param {string} options.toName - Recipient name
@@ -19,32 +20,28 @@ async function sendEmail({ to, toName, subject, htmlContent }) {
   }
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': apiKey,
-        'content-type': 'application/json'
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    defaultClient.authentications['api-key'].apiKey = apiKey;
+
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+    const result = await apiInstance.sendTransacEmail({
+      sender: {
+        email: senderEmail,
+        name: senderName
       },
-      body: JSON.stringify({
-        sender: { name: senderName, email: senderEmail },
-        to: [{ email: to, name: toName }],
-        subject: subject,
-        htmlContent: htmlContent
-      })
+      to: [{
+        email: to,
+        name: toName
+      }],
+      subject: subject,
+      htmlContent: htmlContent
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(`Brevo SMTP send failed: ${response.statusText} - ${errorText}`);
-      return { success: false, error: errorText };
-    }
-
-    const data = await response.json();
-    logger.info(`Email successfully dispatched via Brevo to ${to}. Message ID: ${data.messageId}`);
-    return { success: true, messageId: data.messageId };
+    logger.info(`Email successfully dispatched via Brevo SDK to ${to}.`);
+    return { success: true, result };
   } catch (error) {
-    logger.error(`Error sending email to ${to}: ${error.message}`);
+    logger.error(`Error sending email via Brevo SDK to ${to}: ${error.message}`);
     return { success: false, error: error.message };
   }
 }
