@@ -9,8 +9,8 @@ import { usePermission } from '../hooks/usePermission'
 import { Modal } from '../components/ui/Modal'
 import { Spinner } from '../components/ui/Spinner'
 import axiosInstance from '../api/axiosInstance'
-import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import { exportFuelPDF } from '../utils/pdfExport'
+
 
 const INITIAL_FUEL_FORM = {
   vehicleId: '',
@@ -127,70 +127,9 @@ export default function Fuel() {
   }, [fetchExpenses, expSearch])
 
   const handleExportPDF = () => {
-    const doc = new jsPDF()
-
-    // Title & Header
-    doc.setFontSize(20)
-    doc.setTextColor(30, 41, 59)
-    doc.text('TransitOps Operational Cost Report', 14, 22)
-
-    doc.setFontSize(10)
-    doc.setTextColor(100, 116, 139)
-    doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 14, 30)
-    doc.text(`Total Fleet Operational Cost: Rs. ${totalCost.toLocaleString('en-IN')}`, 14, 36)
-
-    // Divider line
-    doc.setDrawColor(226, 232, 240)
-    doc.line(14, 42, 196, 42)
-
-    // Fuel Logs Table
-    doc.setFontSize(14)
-    doc.setTextColor(30, 41, 59)
-    doc.text('Fuel Records', 14, 52)
-
-    const fuelHeaders = [['Date', 'Vehicle', 'Liters', 'Odometer', 'Total Cost']]
-    const fuelRows = fuelLogs.map(log => [
-      new Date(log.filledAt).toLocaleDateString('en-IN'),
-      log.vehicle?.regNumber || '-',
-      `${Number(log.litres)} L`,
-      `${Number(log.odometer).toLocaleString()} km`,
-      `Rs. ${Number(log.totalCost).toLocaleString('en-IN')}`
-    ])
-
-    doc.autoTable({
-      startY: 56,
-      head: fuelHeaders,
-      body: fuelRows,
-      theme: 'striped',
-      headStyles: { fillColor: [245, 158, 11] }, // Amber primary header
-      styles: { fontSize: 9 }
-    })
-
-    // Expenses Table
-    const finalY = doc.lastAutoTable.finalY + 12
-    doc.text('Other Miscellaneous Expenses', 14, finalY)
-
-    const expHeaders = [['Vehicle', 'Trip Code', 'Toll (Rs)', 'Other (Rs)', 'Maintenance (Rs)', 'Total (Rs)']]
-    const expRows = expenses.map(exp => [
-      exp.vehicle?.regNumber || '-',
-      exp.trip?.tripCode || '-',
-      Number(exp.toll).toLocaleString('en-IN'),
-      Number(exp.other).toLocaleString('en-IN'),
-      Number(exp.maintenanceLinked).toLocaleString('en-IN'),
-      Number(exp.total).toLocaleString('en-IN')
-    ])
-
-    doc.autoTable({
-      startY: finalY + 4,
-      head: expHeaders,
-      body: expRows,
-      theme: 'striped',
-      headStyles: { fillColor: [59, 130, 246] }, // Blue secondary header
-      styles: { fontSize: 9 }
-    })
-
-    doc.save('TransitOps_Operational_Cost_Report.pdf')
+    exportFuelPDF(fuelLogs);
   }
+
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleFuelFormChange = (e) => {

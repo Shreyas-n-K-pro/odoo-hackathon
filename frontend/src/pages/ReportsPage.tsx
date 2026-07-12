@@ -3,9 +3,12 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Download, AlertTriangle } from 'lucide-react';
+import { Download, AlertTriangle, FileText } from 'lucide-react';
 // @ts-ignore
 import { useAuth } from '../hooks/useAuth';
+// @ts-ignore
+import { exportAnalyticsPDF } from '../utils/pdfExport';
+
 
 interface ROIData {
   vehicleId: number;
@@ -101,14 +104,24 @@ export const ReportsPage: React.FC = () => {
           <p className="text-gray-400 text-sm mt-1">Live metrics, operational costs, and vehicle ROI calculators</p>
         </div>
         
-        <button
-          onClick={handleExportCSV}
-          disabled={loading}
-          className="btn-primary flex items-center justify-center gap-2 self-start sm:self-auto"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV Report
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => exportAnalyticsPDF(roiData, costData, efficiencyData, utilizationData)}
+            disabled={loading}
+            className="btn-ghost flex items-center justify-center gap-2 px-3 py-2 text-sm text-amber-400 border-amber-500/30 hover:border-amber-500/60 disabled:opacity-50"
+          >
+            <FileText className="w-4 h-4" />
+            Export PDF
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={loading}
+            className="btn-primary flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* KPI Row */}

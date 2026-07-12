@@ -8,6 +8,8 @@ import { vehicleApi } from '../api/vehicle.api'
 import { usePermission } from '../hooks/usePermission'
 import { Badge } from '../components/ui/Badge'
 import { Spinner } from '../components/ui/Spinner'
+import { exportMaintenancePDF } from '../utils/pdfExport'
+
 
 const INITIAL_FORM = {
   vehicleId: '',
@@ -309,8 +311,20 @@ export default function Maintenance() {
           <div className="p-4 border-b border-white/5 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Service Log</h2>
-              <span className="text-xs text-gray-400">Showing recent records</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportMaintenancePDF(logs)}
+                  className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-400 border-amber-500/30 hover:border-amber-500/60"
+                  title="Export maintenance log to PDF">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export PDF
+                </button>
+                <span className="text-xs text-gray-400">Showing recent records</span>
+              </div>
             </div>
+
             {/* Filter controls */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <input
