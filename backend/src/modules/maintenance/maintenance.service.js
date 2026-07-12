@@ -9,19 +9,36 @@ const { parsePagination, buildPaginationMeta } = require('../../utils/pagination
  * Get all maintenance logs with optional vehicle filter + pagination
  */
 const getMaintenanceLogs = async (query) => {
-  const { vehicleId } = query;
+  const { vehicleId, type, status, search, sortBy, sortOrder } = query;
   const { skip, take, page, limit } = parsePagination(query);
 
   const where = {
     ...(vehicleId && { vehicleId: Number(vehicleId) }),
+    ...(type && { type }),
+    ...(status && { status }),
+    ...(search && {
+      vehicle: {
+        OR: [
+          { regNumber: { contains: search } },
+          { name: { contains: search } }
+        ]
+      }
+    })
   };
+
+  const order = {};
+  if (sortBy) {
+    order[sortBy] = sortOrder === 'asc' ? 'asc' : 'desc';
+  } else {
+    order['servicedAt'] = 'desc';
+  }
 
   const [logs, total] = await prisma.$transaction([
     prisma.maintenanceLog.findMany({
       where,
       skip,
       take,
-      orderBy: { servicedAt: 'desc' },
+      orderBy: order,
       include: { vehicle: true },
     }),
     prisma.maintenanceLog.count({ where }),

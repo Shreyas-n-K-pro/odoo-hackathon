@@ -9,6 +9,8 @@ import { usePermission } from '../hooks/usePermission'
 import { Modal } from '../components/ui/Modal'
 import { Spinner } from '../components/ui/Spinner'
 import axiosInstance from '../api/axiosInstance'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 
 const INITIAL_FUEL_FORM = {
   vehicleId: '',
@@ -54,6 +56,10 @@ export default function Fuel() {
   const [expError, setExpError]           = useState('')
   const [savingExp, setSavingExp]         = useState(false)
 
+  // Search states
+  const [fuelSearch, setFuelSearch] = useState('')
+  const [expSearch, setExpSearch] = useState('')
+
   // ── Data Fetching ─────────────────────────────────────────────────────────
   const fetchTotalCost = useCallback(async () => {
     try {
@@ -64,10 +70,10 @@ export default function Fuel() {
     }
   }, [])
 
-  const fetchFuelLogs = useCallback(async () => {
+  const fetchFuelLogs = useCallback(async (search = '') => {
     setLoadingFuel(true)
     try {
-      const res = await fuelApi.getFuelLogs({ limit: 10 })
+      const res = await fuelApi.getFuelLogs({ limit: 10, search })
       setFuelLogs(res.data.data.logs)
     } catch (err) {
       console.error(err)
@@ -76,10 +82,10 @@ export default function Fuel() {
     }
   }, [])
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = useCallback(async (search = '') => {
     setLoadingExp(true)
     try {
-      const res = await fuelApi.getExpenses({ limit: 10 })
+      const res = await fuelApi.getExpenses({ limit: 10, search })
       setExpenses(res.data.data.expenses)
     } catch (err) {
       console.error(err)
@@ -108,11 +114,83 @@ export default function Fuel() {
 
   useEffect(() => {
     fetchTotalCost()
-    fetchFuelLogs()
-    fetchExpenses()
     fetchVehicles()
     fetchTrips()
-  }, [fetchTotalCost, fetchFuelLogs, fetchExpenses, fetchVehicles, fetchTrips])
+  }, [fetchTotalCost, fetchVehicles, fetchTrips])
+
+  useEffect(() => {
+    fetchFuelLogs(fuelSearch)
+  }, [fetchFuelLogs, fuelSearch])
+
+  useEffect(() => {
+    fetchExpenses(expSearch)
+  }, [fetchExpenses, expSearch])
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF()
+
+    // Title & Header
+    doc.setFontSize(20)
+    doc.setTextColor(30, 41, 59)
+    doc.text('TransitOps Operational Cost Report', 14, 22)
+
+    doc.setFontSize(10)
+    doc.setTextColor(100, 116, 139)
+    doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 14, 30)
+    doc.text(`Total Fleet Operational Cost: Rs. ${totalCost.toLocaleString('en-IN')}`, 14, 36)
+
+    // Divider line
+    doc.setDrawColor(226, 232, 240)
+    doc.line(14, 42, 196, 42)
+
+    // Fuel Logs Table
+    doc.setFontSize(14)
+    doc.setTextColor(30, 41, 59)
+    doc.text('Fuel Records', 14, 52)
+
+    const fuelHeaders = [['Date', 'Vehicle', 'Liters', 'Odometer', 'Total Cost']]
+    const fuelRows = fuelLogs.map(log => [
+      new Date(log.filledAt).toLocaleDateString('en-IN'),
+      log.vehicle?.regNumber || '-',
+      `${Number(log.litres)} L`,
+      `${Number(log.odometer).toLocaleString()} km`,
+      `Rs. ${Number(log.totalCost).toLocaleString('en-IN')}`
+    ])
+
+    doc.autoTable({
+      startY: 56,
+      head: fuelHeaders,
+      body: fuelRows,
+      theme: 'striped',
+      headStyles: { fillColor: [245, 158, 11] }, // Amber primary header
+      styles: { fontSize: 9 }
+    })
+
+    // Expenses Table
+    const finalY = doc.lastAutoTable.finalY + 12
+    doc.text('Other Miscellaneous Expenses', 14, finalY)
+
+    const expHeaders = [['Vehicle', 'Trip Code', 'Toll (Rs)', 'Other (Rs)', 'Maintenance (Rs)', 'Total (Rs)']]
+    const expRows = expenses.map(exp => [
+      exp.vehicle?.regNumber || '-',
+      exp.trip?.tripCode || '-',
+      Number(exp.toll).toLocaleString('en-IN'),
+      Number(exp.other).toLocaleString('en-IN'),
+      Number(exp.maintenanceLinked).toLocaleString('en-IN'),
+      Number(exp.total).toLocaleString('en-IN')
+    ])
+
+    doc.autoTable({
+      startY: finalY + 4,
+      head: expHeaders,
+      body: expRows,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] }, // Blue secondary header
+      styles: { fontSize: 9 }
+    })
+
+    doc.save('TransitOps_Operational_Cost_Report.pdf')
+  }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleFuelFormChange = (e) => {
@@ -204,22 +282,30 @@ export default function Fuel() {
           </p>
         </div>
 
-        {canEdit && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => setFuelModalOpen(true)}
-              className="btn-primary py-2.5 text-xs font-semibold flex items-center gap-2 bg-amber-500 hover:bg-amber-600 border-none text-black"
-            >
-              + Log Fuel
-            </button>
-            <button
-              onClick={() => setExpModalOpen(true)}
-              className="btn-ghost py-2.5 text-xs font-semibold flex items-center gap-2 border border-white/10 hover:border-white/20 text-white"
-            >
-              + Add Expense
-            </button>
-          </div>
-        )}
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={handleExportPDF}
+            className="px-4 py-2.5 text-xs font-semibold border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center gap-2"
+          >
+            📄 Export PDF
+          </button>
+          {canEdit && (
+            <>
+              <button
+                onClick={() => setFuelModalOpen(true)}
+                className="btn-primary py-2.5 text-xs font-semibold flex items-center gap-2 bg-amber-500 hover:bg-amber-600 border-none text-black"
+              >
+                + Log Fuel
+              </button>
+              <button
+                onClick={() => setExpModalOpen(true)}
+                className="btn-ghost py-2.5 text-xs font-semibold flex items-center gap-2 border border-white/10 hover:border-white/20 text-white"
+              >
+                + Add Expense
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Side-by-Side Lists ───────────────────────────────────────────── */}
@@ -227,8 +313,15 @@ export default function Fuel() {
         
         {/* Fuel Logs Column */}
         <div className="glass-card overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-white/5 bg-white/[0.01]">
+          <div className="p-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between gap-4">
             <h3 className="font-bold text-white text-sm">Fuel Logs</h3>
+            <input
+              type="text"
+              placeholder="Search vehicle..."
+              value={fuelSearch}
+              onChange={e => setFuelSearch(e.target.value)}
+              className="bg-black/55 border border-white/10 rounded-lg py-1 px-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 w-44"
+            />
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full data-table">
@@ -284,8 +377,15 @@ export default function Fuel() {
 
         {/* Expenses Column */}
         <div className="glass-card overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-white/5 bg-white/[0.01]">
+          <div className="p-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between gap-4">
             <h3 className="font-bold text-white text-sm">Other Expenses (Toll/Misc)</h3>
+            <input
+              type="text"
+              placeholder="Search vehicle..."
+              value={expSearch}
+              onChange={e => setExpSearch(e.target.value)}
+              className="bg-black/55 border border-white/10 rounded-lg py-1 px-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-44"
+            />
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full data-table">

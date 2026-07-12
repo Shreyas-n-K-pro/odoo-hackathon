@@ -16,6 +16,8 @@ router.use(requireAuth);
 router.get('/', requirePermission('drivers', 'view'), ctrl.getAll);
 router.get('/:id', requirePermission('drivers', 'view'), ctrl.getById);
 
+router.post('/check-expirations', requirePermission('drivers', 'edit'), ctrl.triggerExpiryCheck);
+
 router.post('/', requirePermission('drivers', 'edit'), validate(createDriverSchema), ctrl.create);
 router.patch('/:id', requirePermission('drivers', 'edit'), validate(updateDriverSchema), ctrl.update);
 router.delete('/:id', requirePermission('drivers', 'edit'), ctrl.remove);

@@ -9,19 +9,34 @@ const { parsePagination, buildPaginationMeta } = require('../../utils/pagination
  * Get all fuel logs with optional vehicle filter + pagination
  */
 const getFuelLogs = async (query) => {
-  const { vehicleId } = query;
+  const { vehicleId, search, sortBy, sortOrder } = query;
   const { skip, take, page, limit } = parsePagination(query);
 
   const where = {
     ...(vehicleId && { vehicleId: Number(vehicleId) }),
+    ...(search && {
+      vehicle: {
+        OR: [
+          { regNumber: { contains: search } },
+          { name: { contains: search } }
+        ]
+      }
+    })
   };
+
+  const order = {};
+  if (sortBy) {
+    order[sortBy] = sortOrder === 'asc' ? 'asc' : 'desc';
+  } else {
+    order['filledAt'] = 'desc';
+  }
 
   const [logs, total] = await prisma.$transaction([
     prisma.fuelLog.findMany({
       where,
       skip,
       take,
-      orderBy: { filledAt: 'desc' },
+      orderBy: order,
       include: { vehicle: true, trip: true },
     }),
     prisma.fuelLog.count({ where }),

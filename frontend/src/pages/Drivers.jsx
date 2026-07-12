@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDrivers, createDriver, updateDriver } from '../api/drivers.api';
+import { getDrivers, createDriver, updateDriver, triggerExpiryChecks } from '../api/drivers.api';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/Spinner';
@@ -9,8 +9,9 @@ export default function Drivers() {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', licenseNumber: '', licenseExpiry: '', phone: '', status: 'Available', region: '' });
+  const [formData, setFormData] = useState({ name: '', licenseNumber: '', licenseExpiry: '', phone: '', email: '', status: 'Available', region: '' });
   const [editingId, setEditingId] = useState(null);
+  const [checkingExpirations, setCheckingExpirations] = useState(false);
 
   const fetchDrivers = async () => {
     try {
@@ -30,10 +31,11 @@ export default function Drivers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...formData, email: formData.email || null };
       if (editingId) {
-        await updateDriver(editingId, formData);
+        await updateDriver(editingId, payload);
       } else {
-        await createDriver(formData);
+        await createDriver(payload);
       }
       setModalOpen(false);
       fetchDrivers();
@@ -48,6 +50,7 @@ export default function Drivers() {
       licenseNumber: driver.licenseNumber,
       licenseExpiry: dayjs(driver.licenseExpiry).format('YYYY-MM-DD'),
       phone: driver.phone,
+      email: driver.email || '',
       status: driver.status,
       region: driver.region || ''
     });
@@ -56,7 +59,7 @@ export default function Drivers() {
   };
 
   const openCreate = () => {
-    setFormData({ name: '', licenseNumber: '', licenseExpiry: '', phone: '', status: 'Available', region: '' });
+    setFormData({ name: '', licenseNumber: '', licenseExpiry: '', phone: '', email: '', status: 'Available', region: '' });
     setEditingId(null);
     setModalOpen(true);
   };
@@ -71,22 +74,44 @@ export default function Drivers() {
     }
   };
 
+  const handleTriggerExpirations = async () => {
+    setCheckingExpirations(true);
+    try {
+      const res = await triggerExpiryChecks();
+      alert(`License expiry check completed successfully!\nFound ${res.count} expiring licenses.\nDetails sent to Safety Officer.`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to trigger expiration checks. Verify Brevo configuration.');
+    } finally {
+      setCheckingExpirations(false);
+    }
+  };
+
   if (loading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
 
   return (
     <div className="p-6 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">Driver Management</h1>
-        <button onClick={openCreate} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-          + Add Driver
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleTriggerExpirations} 
+            disabled={checkingExpirations}
+            className="px-4 py-2 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            🔔 {checkingExpirations ? 'Checking...' : 'Check Expirations & Email Alerts'}
+          </button>
+          <button onClick={openCreate} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            + Add Driver
+          </button>
+        </div>
       </div>
 
       <div className="glass-card overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
-              <th className="p-4 text-sm font-semibold text-gray-300">Name</th>
+              <th className="p-4 text-sm font-semibold text-gray-300">Name & Contact</th>
               <th className="p-4 text-sm font-semibold text-gray-300">License</th>
               <th className="p-4 text-sm font-semibold text-gray-300">Expiry</th>
               <th className="p-4 text-sm font-semibold text-gray-300">Safety Score</th>
@@ -101,8 +126,9 @@ export default function Drivers() {
               return (
                 <tr key={d.id} className={`border-b border-white/5 hover:bg-white/5 ${isExpired || isSuspended ? 'bg-red-500/10' : ''}`}>
                   <td className="p-4 text-white">
-                    {d.name}
+                    <div className="font-semibold">{d.name}</div>
                     <div className="text-xs text-gray-400">{d.phone}</div>
+                    {d.email && <div className="text-xs text-blue-400 font-mono">{d.email}</div>}
                   </td>
                   <td className="p-4 text-gray-300 font-mono text-sm">{d.licenseNumber}</td>
                   <td className="p-4">
@@ -151,6 +177,10 @@ export default function Drivers() {
           <div>
             <label className="block text-sm text-gray-400 mb-1">Name</label>
             <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Email (Optional - for notifications)</label>
+            <input type="email" placeholder="driver@transitops.in" className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

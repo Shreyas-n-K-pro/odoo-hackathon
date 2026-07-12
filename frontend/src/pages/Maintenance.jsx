@@ -34,11 +34,26 @@ export default function Maintenance() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Filters state
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [sortBy, setSortBy] = useState('servicedAt')
+  const [sortOrder, setSortOrder] = useState('desc')
+
   // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchLogs = useCallback(async (page = 1) => {
     setLoading(true)
     try {
-      const res = await maintenanceApi.getAll({ page, limit: 10 })
+      const res = await maintenanceApi.getAll({ 
+        page, 
+        limit: 10,
+        search,
+        type: filterType,
+        status: filterStatus,
+        sortBy,
+        sortOrder
+      })
       setLogs(res.data.data.logs)
       setPagination(res.data.data.pagination)
     } catch (err) {
@@ -46,7 +61,7 @@ export default function Maintenance() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [search, filterType, filterStatus, sortBy, sortOrder])
 
   const fetchVehicles = useCallback(async () => {
     try {
@@ -61,8 +76,11 @@ export default function Maintenance() {
 
   useEffect(() => {
     fetchLogs(currentPage)
+  }, [fetchLogs, currentPage])
+
+  useEffect(() => {
     fetchVehicles()
-  }, [fetchLogs, fetchVehicles, currentPage])
+  }, [fetchVehicles])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleFormChange = (e) => {
@@ -288,9 +306,55 @@ export default function Maintenance() {
       {/* ── Right Column: Service Log Table (lg:col-span-7) ───────────────── */}
       <div className="lg:col-span-7">
         <div className="glass-card overflow-hidden h-full flex flex-col">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Service Log</h2>
-            <span className="text-xs text-gray-400">Showing recent records</span>
+          <div className="p-4 border-b border-white/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Service Log</h2>
+              <span className="text-xs text-gray-400">Showing recent records</span>
+            </div>
+            {/* Filter controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <input
+                type="text"
+                placeholder="Search vehicle..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="input-field text-xs py-1.5 px-3 bg-black/40 border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              />
+              <select
+                value={filterType}
+                onChange={e => { setFilterType(e.target.value); setCurrentPage(1); }}
+                className="input-field text-xs py-1.5 px-3 bg-black/40 border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="">All Types</option>
+                <option value="Routine">Routine</option>
+                <option value="Repair">Repair</option>
+                <option value="Inspection">Inspection</option>
+              </select>
+              <select
+                value={filterStatus}
+                onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                className="input-field text-xs py-1.5 px-3 bg-black/40 border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="">All Statuses</option>
+                <option value="Active">Active (In Shop)</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={e => {
+                  const [field, order] = e.target.value.split('-');
+                  setSortBy(field);
+                  setSortOrder(order);
+                  setCurrentPage(1);
+                }}
+                className="input-field text-xs py-1.5 px-3 bg-black/40 border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="servicedAt-desc">Newest First</option>
+                <option value="servicedAt-asc">Oldest First</option>
+                <option value="cost-desc">Cost: High to Low</option>
+                <option value="cost-asc">Cost: Low to High</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex-1 overflow-x-auto">

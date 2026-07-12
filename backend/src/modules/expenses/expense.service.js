@@ -9,11 +9,19 @@ const { parsePagination, buildPaginationMeta } = require('../../utils/pagination
  * Get all expenses with optional vehicle filter, grouped/pivoted by vehicle, trip, and date.
  */
 const getExpenses = async (query) => {
-  const { vehicleId } = query;
+  const { vehicleId, search } = query;
   const { skip, take, page, limit } = parsePagination(query);
 
   const where = {
     ...(vehicleId && { vehicleId: Number(vehicleId) }),
+    ...(search && {
+      vehicle: {
+        OR: [
+          { regNumber: { contains: search } },
+          { name: { contains: search } }
+        ]
+      }
+    })
   };
 
   const expenses = await prisma.expense.findMany({

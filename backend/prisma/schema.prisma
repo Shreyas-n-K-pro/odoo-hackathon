@@ -126,6 +126,7 @@ model Driver {
   licenseNumber  String       @unique @map("license_number") @db.VarChar(50)
   licenseExpiry  DateTime     @map("license_expiry")
   phone          String       @db.VarChar(20)
+  email          String?      @db.VarChar(150)
   status         DriverStatus @default(Active)
   region         String?      @db.VarChar(100)
   safetyScore    Int          @default(100) @map("safety_score")

@@ -47,4 +47,13 @@ const remove = async (req, res, next) => {
   }
 };
 
-module.exports = { getAll, getById, create, update, remove };
+const triggerExpiryCheck = async (req, res, next) => {
+  try {
+    const result = await driversService.checkExpirations();
+    return sendSuccess(res, result, 'Driver license expiration check complete.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getAll, getById, create, update, remove, triggerExpiryCheck };
