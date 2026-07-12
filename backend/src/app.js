@@ -25,6 +25,8 @@ const expenseRoutes     = require('./modules/expenses/expense.routes');
 const costRoutes        = require('./modules/cost/cost.routes');
 const analyticsRoutes   = require('./modules/analytics/analytics.routes');
 const dashboardRoutes   = require('./modules/analytics/dashboard.routes');
+const documentRoutes    = require('./modules/documents/documents.routes');
+
 
 const app = express();
 
@@ -70,6 +72,8 @@ app.use('/api/expenses',    expenseRoutes);
 app.use('/api/operational-cost', costRoutes);
 app.use('/api/analytics',   analyticsRoutes);
 app.use('/api/dashboard',   dashLimiter, dashboardRoutes);
+app.use('/api/documents',   documentRoutes);
+
 
 
 // ── Error Handling (must be last) ────────────────────────────────────────────

@@ -103,9 +103,11 @@ model Vehicle {
   maintenanceLogs  MaintenanceLog[]
   fuelLogs         FuelLog[]
   expenses         Expense[]
+  documents        VehicleDocument[]
 
   @@map("vehicles")
 }
+
 
 // ─── Table: settings (Member A) ──────────────────────────────────────────────
 
@@ -225,3 +227,21 @@ model Expense {
 
   @@map("expenses")
 }
+
+// ─── Table: vehicle_documents (Bonus Feature) ────────────────────────────────
+
+model VehicleDocument {
+  id          Int       @id @default(autoincrement())
+  vehicleId   Int       @map("vehicle_id")
+  docType     String    @map("doc_type") @db.VarChar(50)
+  docNumber   String?   @map("doc_number") @db.VarChar(100)
+  issuedAt    DateTime? @map("issued_at")
+  expiresAt   DateTime  @map("expires_at")
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_documents")
+}
+

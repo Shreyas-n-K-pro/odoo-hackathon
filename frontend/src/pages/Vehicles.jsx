@@ -11,6 +11,8 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { Spinner } from '../components/ui/Spinner'
 import { exportVehiclesPDF } from '../utils/pdfExport'
+import axiosInstance from '../api/axiosInstance'
+
 
 
 // Debounce hook
@@ -31,6 +33,92 @@ const INITIAL_FORM = {
 export default function Vehicles() {
   const { canAccess } = usePermission()
   const canEdit = canAccess('fleet', 'edit')
+
+
+  // ── Documents modal state ─────────────────────────────────────────────────
+  const [docsModalOpen, setDocsModalOpen] = useState(false)
+  const [docsVehicle, setDocsVehicle]     = useState(null)  // { id, regNumber, name }
+  const [docs, setDocs]                   = useState([])
+  const [docsLoading, setDocsLoading]     = useState(false)
+  const [docForm, setDocForm] = useState({ docType: 'RC', docNumber: '', issuedAt: '', expiresAt: '', notes: '' })
+  const [docFormError, setDocFormError]   = useState('')
+  const [docSaving, setDocSaving]         = useState(false)
+  const [editDoc, setEditDoc]             = useState(null)
+
+  const DOC_TYPES = ['RC', 'Insurance', 'PUC', 'Permit', 'Fitness Certificate', 'Road Tax', 'Other']
+  const DOC_ICONS = { RC: '📋', Insurance: '🛡️', PUC: '🌿', Permit: '📜', 'Fitness Certificate': '✅', 'Road Tax': '💰', Other: '📄' }
+  const STATUS_COLORS = { Valid: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10', Expiring_Soon: 'text-amber-400 border-amber-500/30 bg-amber-500/10', Expired: 'text-red-400 border-red-500/30 bg-red-500/10' }
+
+  const fetchDocs = async (vehicleId) => {
+    setDocsLoading(true)
+    try {
+      const res = await axiosInstance.get('/documents', { params: { vehicleId } })
+      setDocs(res.data.data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDocsLoading(false)
+    }
+  }
+
+  const openDocsModal = (v) => {
+    setDocsVehicle(v)
+    setDocForm({ docType: 'RC', docNumber: '', issuedAt: '', expiresAt: '', notes: '' })
+    setEditDoc(null)
+    setDocFormError('')
+    setDocsModalOpen(true)
+    fetchDocs(v.id)
+  }
+
+  const openEditDoc = (doc) => {
+    setEditDoc(doc)
+    setDocForm({
+      docType:   doc.docType,
+      docNumber: doc.docNumber || '',
+      issuedAt:  doc.issuedAt  ? doc.issuedAt.split('T')[0]  : '',
+      expiresAt: doc.expiresAt ? doc.expiresAt.split('T')[0] : '',
+      notes:     doc.notes || '',
+    })
+    setDocFormError('')
+  }
+
+  const handleDocSave = async (e) => {
+    e.preventDefault()
+    if (!docForm.expiresAt) { setDocFormError('Expiry date is required.'); return }
+    setDocSaving(true); setDocFormError('')
+    try {
+      const payload = {
+        vehicleId: docsVehicle.id,
+        docType:   docForm.docType,
+        docNumber: docForm.docNumber || undefined,
+        issuedAt:  docForm.issuedAt  || undefined,
+        expiresAt: docForm.expiresAt,
+        notes:     docForm.notes     || undefined,
+      }
+      if (editDoc) {
+        await axiosInstance.put(`/documents/${editDoc.id}`, payload)
+      } else {
+        await axiosInstance.post('/documents', payload)
+      }
+      setEditDoc(null)
+      setDocForm({ docType: 'RC', docNumber: '', issuedAt: '', expiresAt: '', notes: '' })
+      fetchDocs(docsVehicle.id)
+    } catch (err) {
+      setDocFormError(err.response?.data?.message || 'Failed to save document.')
+    } finally {
+      setDocSaving(false)
+    }
+  }
+
+  const handleDocDelete = async (docId) => {
+    if (!window.confirm('Delete this document?')) return
+    try {
+      await axiosInstance.delete(`/documents/${docId}`)
+      fetchDocs(docsVehicle.id)
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete document.')
+    }
+  }
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [vehicles, setVehicles]   = useState([])
@@ -237,6 +325,7 @@ export default function Vehicles() {
                 <th>Odometer</th>
                 <th>Acq. Cost</th>
                 <th>Status</th>
+                <th>Docs</th>
                 {canEdit && <th>Actions</th>}
               </tr>
             </thead>
@@ -244,14 +333,14 @@ export default function Vehicles() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: canEdit ? 8 : 7 }).map((_, j) => (
+                    {Array.from({ length: canEdit ? 9 : 8 }).map((_, j) => (
                       <td key={j}><div className="skeleton h-4 w-full rounded" /></td>
                     ))}
                   </tr>
                 ))
               ) : vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 8 : 7} className="text-center py-12 text-gray-500">
+                  <td colSpan={canEdit ? 9 : 8} className="text-center py-12 text-gray-500">
                     No vehicles found. {canEdit && 'Click "+ Add Vehicle" to get started.'}
                   </td>
                 </tr>
@@ -265,6 +354,14 @@ export default function Vehicles() {
                     <td className="text-gray-400">{Number(v.odometer).toLocaleString()} km</td>
                     <td className="text-gray-400">{formatCurrency(v.acquisitionCost)}</td>
                     <td><Badge status={v.status} /></td>
+                    <td>
+                      <button
+                        onClick={() => openDocsModal(v)}
+                        className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        📋 Docs
+                      </button>
+                    </td>
                     {canEdit && (
                       <td>
                         <div className="flex items-center gap-2">
@@ -395,6 +492,113 @@ export default function Vehicles() {
           </div>
         </form>
       </Modal>
+
+      {/* ── Vehicle Documents Modal ────────────────────────────────────── */}
+      {docsVehicle && (
+        <Modal
+          isOpen={docsModalOpen}
+          onClose={() => setDocsModalOpen(false)}
+          title={`Documents — ${docsVehicle.regNumber} · ${docsVehicle.name}`}
+          size="lg"
+        >
+          <div className="space-y-5">
+
+            {/* Add / Edit Form */}
+            <div className="p-4 rounded-xl border border-white/8 bg-white/3 space-y-3">
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {editDoc ? '✏️ Edit Document' : '+ Add Document'}
+              </h4>
+              {docFormError && (
+                <div className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">{docFormError}</div>
+              )}
+              <form onSubmit={handleDocSave} className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Document Type *</label>
+                  <select value={docForm.docType} onChange={e => setDocForm(f => ({...f, docType: e.target.value}))} className="input-field text-sm">
+                    {DOC_TYPES.map(t => <option key={t} value={t}>{DOC_ICONS[t] || '📄'} {t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Doc Number / Policy No.</label>
+                  <input value={docForm.docNumber} onChange={e => setDocForm(f => ({...f, docNumber: e.target.value}))}
+                    placeholder="e.g. MH01-2024-XXXXX" className="input-field text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Issue Date</label>
+                  <input type="date" value={docForm.issuedAt} onChange={e => setDocForm(f => ({...f, issuedAt: e.target.value}))} className="input-field text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Expiry Date *</label>
+                  <input type="date" required value={docForm.expiresAt} onChange={e => setDocForm(f => ({...f, expiresAt: e.target.value}))} className="input-field text-sm" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Notes</label>
+                  <input value={docForm.notes} onChange={e => setDocForm(f => ({...f, notes: e.target.value}))}
+                    placeholder="Optional notes..." className="input-field text-sm" />
+                </div>
+                <div className="col-span-2 flex gap-2">
+                  {editDoc && (
+                    <button type="button" onClick={() => { setEditDoc(null); setDocForm({ docType: 'RC', docNumber: '', issuedAt: '', expiresAt: '', notes: '' }) }}
+                      className="btn-ghost text-sm flex-1">Cancel Edit</button>
+                  )}
+                  <button type="submit" disabled={docSaving} className="btn-primary text-sm flex-1 flex items-center justify-center gap-2">
+                    {docSaving ? 'Saving...' : (editDoc ? 'Update Document' : 'Add Document')}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Docs List */}
+            <div>
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Stored Documents</h4>
+              {docsLoading ? (
+                <div className="text-center text-gray-500 py-6 text-sm">Loading...</div>
+              ) : docs.length === 0 ? (
+                <div className="text-center text-gray-500 py-8 text-sm">No documents added yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {docs.map(d => {
+                    const daysLeft = Math.floor((new Date(d.expiresAt) - new Date()) / 86400000)
+                    const statusKey = d.status
+                    return (
+                      <div key={d.id} className="flex items-center justify-between p-3 rounded-lg border border-white/8 bg-white/3 hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{DOC_ICONS[d.docType] || '📄'}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{d.docType}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[statusKey] || ''}`}>
+                                {statusKey === 'Valid' ? 'Valid' : statusKey === 'Expiring_Soon' ? `Expires in ${daysLeft}d` : `Expired ${Math.abs(daysLeft)}d ago`}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              {d.docNumber && <span className="mr-2 font-mono">{d.docNumber}</span>}
+                              Expires: {new Date(d.expiresAt).toLocaleDateString('en-IN')}
+                              {d.issuedAt && ` · Issued: ${new Date(d.issuedAt).toLocaleDateString('en-IN')}`}
+                            </p>
+                            {d.notes && <p className="text-xs text-gray-500 mt-0.5 italic">{d.notes}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 ml-3">
+                          <button onClick={() => openEditDoc(d)}
+                            className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded transition-colors">
+                            Edit
+                          </button>
+                          <button onClick={() => handleDocDelete(d.id)}
+                            className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 px-2 py-1 rounded transition-colors">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

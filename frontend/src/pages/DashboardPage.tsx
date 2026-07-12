@@ -78,6 +78,8 @@ export const DashboardPage: React.FC = () => {
   const [monthlyTrips,  setMonthlyTrips]  = useState<MonthPt[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [lastUpdated,   setLastUpdated]   = useState<Date|null>(null);
+  const [expiringDocs,  setExpiringDocs]  = useState<any[]>([]);
+
 
   // Filters (spec §3.2)
   const [filterType,   setFilterType]   = useState('');
@@ -133,9 +135,18 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => { fetchAll(); }, [fetchAll]);
   useEffect(() => {
     const id = setInterval(fetchAll, 30000);
-
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  // ── Fetch expiring documents (run once + on mount) ────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/documents/expiring?days=30', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(j => { if (j.data) setExpiringDocs(j.data); })
+      .catch(() => {});
+  }, [token]);
+
 
   // ── KPI card definitions ───────────────────────────────────────────────────
   const kpiCards = [
@@ -363,6 +374,52 @@ export const DashboardPage: React.FC = () => {
           </p>
         )}
       </div>
+
+      {/* ── Document Expiry Alert Widget ──────────────────────────────── */}
+      {expiringDocs.length > 0 && (
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <h3 className="text-base font-semibold text-white">Document Expiry Alerts</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
+                {expiringDocs.filter(d => d.status === 'Expired').length} Expired
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium">
+                {expiringDocs.filter(d => d.status === 'Expiring_Soon').length} Expiring Soon
+              </span>
+            </div>
+            <a href="/vehicles" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Manage Docs →</a>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {expiringDocs.slice(0, 6).map(doc => {
+              const daysLeft = Math.floor((new Date(doc.expiresAt).getTime() - Date.now()) / 86400000);
+              const isExpired = doc.status === 'Expired';
+              const colorCls  = isExpired
+                ? 'border-red-500/30 bg-red-500/5'
+                : 'border-amber-500/30 bg-amber-500/5';
+              const badgeCls  = isExpired
+                ? 'text-red-400 bg-red-500/15 border-red-500/30'
+                : 'text-amber-400 bg-amber-500/15 border-amber-500/30';
+              const icons: Record<string, string> = { RC: '📋', Insurance: '🛡️', PUC: '🌿', Permit: '📜', 'Fitness Certificate': '✅', 'Road Tax': '💰', Other: '📄' };
+              return (
+                <div key={doc.id} className={`p-3 rounded-lg border ${colorCls} flex items-center gap-3`}>
+                  <span className="text-2xl">{icons[doc.docType] ?? '📄'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{doc.docType}</p>
+                    <p className="text-xs text-gray-400 font-mono">{doc.vehicle?.regNumber ?? '—'} · {doc.vehicle?.name ?? ''}</p>
+                    <p className="text-xs text-gray-500">Expires: {new Date(doc.expiresAt).toLocaleDateString('en-IN')}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ${badgeCls}`}>
+                    {isExpired ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
