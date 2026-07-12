@@ -16,7 +16,6 @@
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
 - [Project Structure](#-project-structure)
-- [Screenshots](#-screenshots)
 
 ---
 
