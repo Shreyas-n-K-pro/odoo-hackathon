@@ -12,8 +12,7 @@ import { Topbar } from './components/layout/Topbar';
 // Pages
 // @ts-ignore
 import Login from './pages/Login';
-// @ts-ignore
-import Dashboard from './pages/Dashboard';
+import { DashboardPage } from './pages/DashboardPage';
 // @ts-ignore
 import Vehicles from './pages/Vehicles';
 // @ts-ignore
@@ -55,7 +54,7 @@ function App() {
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<AppShell><Dashboard /></AppShell>} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/vehicles" element={<AppShell><Vehicles /></AppShell>} />
             <Route path="/drivers" element={<AppShell><Drivers /></AppShell>} />
             <Route path="/trips" element={<AppShell><Trips /></AppShell>} />
