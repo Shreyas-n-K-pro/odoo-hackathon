@@ -1,3 +1,6 @@
+## ─── Backend (local only — not pushed to GitHub) ────────────────────────────
+backend/
+
 ## ─── Environment ───────────────────────────────────────────────────────────
 .env
 .env.local
