@@ -522,6 +522,13 @@ npm run preview      # Preview production build
 
 Built during an **8-hour hackathon** for the **Odoo Hackathon 2026**.
 
+| Member | GitHub |
+|---|---|
+| Shreyas N K | [@Shreyas-n-K-pro](https://github.com/Shreyas-n-K-pro) |
+| Sumanth Shet | [@SumanthShet17](https://github.com/SumanthShet17) |
+| Vaishnavi S K | [@Vaishnavi-S-K](https://github.com/Vaishnavi-S-K) |
+| Shivaprasad Murashillin | [@ShivaprasadMurashillin](https://github.com/ShivaprasadMurashillin) |
+
 ---
 
 ## 📄 License
