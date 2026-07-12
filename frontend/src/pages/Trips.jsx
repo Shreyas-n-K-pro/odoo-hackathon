@@ -31,12 +31,16 @@ export default function Trips() {
         vehicleApi.getAll({ status: 'Available' }),
         getDrivers({ status: 'Available' })
       ]);
+      console.log('API Responses:', { tripsRes, vehicles: vehiclesRes.data?.data, drivers: driversRes });
       setTrips(tripsRes);
-      // Wait, vehicleApi.getAll returns full axios response, so we need .data.data
-      setVehicles(vehiclesRes.data?.data || []);
+      // vehicleApi.getAll returns { data: { success: true, data: { vehicles: [...], pagination: {...} } } }
+      setVehicles(vehiclesRes.data?.data?.vehicles || []);
       setDrivers(driversRes);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching data for trips:', err);
+      if (err.response) {
+        console.error('Error Response:', err.response.data);
+      }
     } finally {
       setLoading(false);
     }

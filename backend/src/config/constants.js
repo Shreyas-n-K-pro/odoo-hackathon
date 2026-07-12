@@ -31,7 +31,7 @@ const RBAC_MAP = Object.freeze({
   [ROLES.FLEET_MANAGER]: {
     fleet:       PERMISSION.EDIT,
     drivers:     PERMISSION.EDIT,
-    trips:       PERMISSION.NONE,
+    trips:       PERMISSION.VIEW,
     fuel:        PERMISSION.NONE,
     analytics:   PERMISSION.EDIT,
     dashboard:   PERMISSION.VIEW,
@@ -40,7 +40,7 @@ const RBAC_MAP = Object.freeze({
   },
   [ROLES.DISPATCHER]: {
     fleet:       PERMISSION.VIEW,
-    drivers:     PERMISSION.NONE,
+    drivers:     PERMISSION.VIEW,
     trips:       PERMISSION.EDIT,
     fuel:        PERMISSION.NONE,
     analytics:   PERMISSION.NONE,

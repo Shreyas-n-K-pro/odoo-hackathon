@@ -138,6 +138,7 @@ const completeTrip = async (id, data) => {
       await tx.expense.create({
         data: {
           tripId: trip.id,
+          vehicleId: trip.vehicleId,
           category: expenseCategory,
           amount: expenseAmount,
           description: expenseDescription || 'Trip completion expense',
