@@ -1,190 +1,308 @@
-import React, { useState } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
-import { Card, KPICard } from '../components/Card';
-import { Button } from '../components/Button';
-import { useAuth } from '../contexts/AuthContext';
-import { useRBAC } from '../hooks/useRBAC';
-import { Permission } from '../types';
-import { Tooltip } from '../components/Tooltip';
-import { formatCurrency } from '../utils/helpers';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend
+} from 'recharts';
+import { Download, AlertTriangle } from 'lucide-react';
+// @ts-ignore
+import { useAuth } from '../hooks/useAuth';
+
+interface ROIData {
+  vehicleId: number;
+  regNumber: string;
+  name: string;
+  revenue: number;
+  fuelCost: number;
+  maintenanceCost: number;
+  acquisitionCost: number;
+  roi: number;
+}
+
+interface CostData {
+  id: number;
+  regNumber: string;
+  name: string;
+  totalCost: number;
+  fuelCost: number;
+  maintenanceCost: number;
+}
 
 export const ReportsPage: React.FC = () => {
-  const { user } = useAuth();
-  const permissions = useRBAC(user?.role || 'dispatcher');
-  const role = user?.role || 'dispatcher';
+  const { token } = useAuth() as { token: string | null };
+  
+  const [activeTab, setActiveTab] = useState<'roi' | 'cost' | 'revenue'>('roi');
+  const [loading, setLoading] = useState(true);
+  const [roiData, setRoiData] = useState<{ fleetAvgRoi: number; vehicles: ROIData[] }>({ fleetAvgRoi: 0, vehicles: [] });
+  const [costData, setCostData] = useState<CostData[]>([]);
+  const [revenueData, setRevenueData] = useState<{ month: string; revenue: number; trips: number }[]>([]);
+  const [efficiencyData, setEfficiencyData] = useState({ avgEfficiency: 0, totalDistance: 0, totalLitres: 0 });
+  const [utilizationData, setUtilizationData] = useState({ fleetUtilizationPct: 0 });
 
-  // Determine available tabs based on role
-  const availableTabs = [];
-  if (['admin', 'fleet_manager', 'dispatcher'].includes(role)) {
-    availableTabs.push({ id: 'trips', name: 'Trips Report' });
-  }
-  if (['admin', 'fleet_manager', 'safety_officer'].includes(role)) {
-    availableTabs.push({ id: 'safety', name: 'Safety Report' });
-  }
-  if (['admin', 'fleet_manager', 'financial_analyst'].includes(role)) {
-    availableTabs.push({ id: 'financial', name: 'Financial Report' });
-  }
+  const fetchMetrics = async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      const headers = { 'Authorization': `Bearer ${token}` };
 
-  const [activeTab, setActiveTab] = useState(availableTabs[0]?.id || 'trips');
+      const [roiRes, costRes, revRes, effRes, sumRes] = await Promise.all([
+        fetch('/api/analytics/roi', { headers }),
+        fetch('/api/analytics/top-costliest-vehicles', { headers }),
+        fetch('/api/analytics/monthly-revenue', { headers }),
+        fetch('/api/analytics/fuel-efficiency', { headers }),
+        fetch('/api/analytics/summary', { headers })
+      ]);
 
-  // Mock data for reports
-  const tripReportsData = [
-    { name: 'Week 1', completed: 12, active: 4, cancelled: 1 },
-    { name: 'Week 2', completed: 15, active: 3, cancelled: 0 },
-    { name: 'Week 3', completed: 18, active: 5, cancelled: 2 },
-    { name: 'Week 4', completed: 22, active: 2, cancelled: 1 },
-  ];
+      const roiJson = await roiRes.json();
+      const costJson = await costRes.json();
+      const revJson = await revRes.json();
+      const effJson = await effRes.json();
+      const sumJson = await sumRes.json();
 
-  const safetyReportsData = [
-    { name: 'Rajesh', score: 95, alerts: 1 },
-    { name: 'Vikram', score: 88, alerts: 3 },
-    { name: 'Akshay', score: 72, alerts: 8 },
-  ];
+      if (roiJson.data) setRoiData(roiJson.data);
+      if (costJson.data) setCostData(costJson.data);
+      if (revJson.data) setRevenueData(revJson.data);
+      if (effJson.data) setEfficiencyData(effJson.data);
+      if (sumJson.data) setUtilizationData({ fleetUtilizationPct: sumJson.data.fleetUtilizationPct });
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const financialReportsData = [
-    { name: 'Jan', revenue: 250000, expenses: 140000 },
-    { name: 'Feb', revenue: 310000, expenses: 160000 },
-    { name: 'Mar', revenue: 290000, expenses: 155000 },
-    { name: 'Apr', revenue: 380000, expenses: 210000 },
-    { name: 'May', revenue: 340000, expenses: 190000 },
-    { name: 'Jun', revenue: 420000, expenses: 220000 },
-  ];
+  useEffect(() => {
+    fetchMetrics();
+  }, [token]);
 
-  const handleExport = (format: 'CSV' | 'PDF') => {
-    alert(`Exporting ${activeTab.toUpperCase()} report in ${format} format!`);
+  const handleExportCSV = () => {
+    if (!token) return;
+    const url = `/api/analytics/export?reportType=${activeTab}`;
+    // Fetch with authentication token and download blob
+    fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${activeTab}_report_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+      })
+      .catch(err => console.error('Export failed:', err));
   };
 
   return (
-    <MainLayout>
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-light-primary-text dark:text-dark-primary-text">Reports</h1>
-            <p className="text-light-secondary-text dark:text-dark-secondary-text mt-1">Analyze system activity and download records</p>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Tooltip content={permissions.getExplanation(Permission.REPORT_EXPORT)} disabled={permissions.canExportReports}>
-              <Button
-                variant="outline"
-                size="md"
-                icon={<Download className="w-4.5 h-4.5" />}
-                disabled={!permissions.canExportReports}
-                onClick={() => handleExport('CSV')}
-              >
-                Export CSV
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content={permissions.getExplanation(Permission.REPORT_EXPORT)} disabled={permissions.canExportReports}>
-              <Button
-                variant="primary"
-                size="md"
-                icon={<Download className="w-4.5 h-4.5" />}
-                disabled={!permissions.canExportReports}
-                onClick={() => handleExport('PDF')}
-              >
-                Export PDF
-              </Button>
-            </Tooltip>
-          </div>
+    <div className="p-4 md:p-6 animate-fade-in space-y-6">
+      
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Reports & Analytics 📊</h1>
+          <p className="text-gray-400 text-sm mt-1">Live metrics, operational costs, and vehicle ROI calculators</p>
         </div>
-
-        {/* Dynamic Tabs */}
-        {availableTabs.length > 1 && (
-          <div className="flex border-b border-light-border dark:border-dark-border mb-6">
-            {availableTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-6 font-semibold text-sm transition-colors relative ${
-                  activeTab === tab.id
-                    ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-600 dark:border-teal-400'
-                    : 'text-light-secondary-text dark:text-dark-secondary-text hover:text-light-primary-text dark:hover:text-dark-primary-text'
-                }`}
-              >
-                {tab.name}
-              </button>
-            ))}
-          </div>
-        )}
+        
+        <button
+          onClick={handleExportCSV}
+          disabled={loading}
+          className="btn-primary flex items-center justify-center gap-2 self-start sm:self-auto"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV Report
+        </button>
       </div>
 
-      {/* Render Active Tab */}
-      {activeTab === 'trips' && (
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">⛽</p>
+          <p className="text-xl font-bold text-white">{efficiencyData.avgEfficiency} km/l</p>
+          <p className="text-gray-400 text-xs mt-1">Avg Fuel Efficiency</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">📊</p>
+          <p className="text-xl font-bold text-white">{utilizationData.fleetUtilizationPct}%</p>
+          <p className="text-gray-400 text-xs mt-1">Fleet Utilization</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">💸</p>
+          <p className="text-xl font-bold text-white">
+            ₹{costData.reduce((sum, item) => sum + item.totalCost, 0).toLocaleString('en-IN')}
+          </p>
+          <p className="text-gray-400 text-xs mt-1">Total Operational Cost</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-2xl mb-1">📈</p>
+          <p className="text-xl font-bold text-white">{roiData.fleetAvgRoi}%</p>
+          <p className="text-gray-400 text-xs mt-1">Fleet Average ROI</p>
+        </div>
+      </div>
+
+      {/* Formula Note */}
+      <div className="p-3 bg-navy-900/50 rounded-lg border border-white/5 flex items-center gap-2 text-gray-400 text-xs">
+        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+        <span>
+          <strong>ROI Formula:</strong> ROI = (Revenue − (Maintenance + Fuel)) / Acquisition Cost. Estimated Revenue is calculated at flat ₹100 per km traveled.
+        </span>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-white/10 gap-2">
+        <button
+          onClick={() => setActiveTab('roi')}
+          className={`py-2.5 px-4 font-semibold text-sm transition-colors relative ${
+            activeTab === 'roi' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Vehicle ROI
+        </button>
+        <button
+          onClick={() => setActiveTab('cost')}
+          className={`py-2.5 px-4 font-semibold text-sm transition-colors relative ${
+            activeTab === 'cost' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Operational Cost Breakdown
+        </button>
+        <button
+          onClick={() => setActiveTab('revenue')}
+          className={`py-2.5 px-4 font-semibold text-sm transition-colors relative ${
+            activeTab === 'revenue' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Monthly Revenue Trends
+        </button>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="glass-card p-12 text-center text-gray-400">Loading metrics...</div>
+      ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KPICard title="Trips Logged" value={67} icon="🗺️" />
-            <KPICard title="Completion Rate" value="95.5%" icon="✓" />
-            <KPICard title="Cancelled Trips" value={3} icon="❌" />
-          </div>
-          <Card>
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Trip Volume Summary</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={tripReportsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <ChartTooltip />
-                <Legend />
-                <Bar dataKey="completed" fill="#0F766E" name="Completed" />
-                <Bar dataKey="active" fill="#006D86" name="Active" />
-                <Bar dataKey="cancelled" fill="#B42334" name="Cancelled" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
+          {activeTab === 'roi' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* ROI Table */}
+              <div className="glass-card p-5 overflow-x-auto">
+                <h3 className="text-base font-semibold text-white mb-4">Vehicle ROI Breakdown</h3>
+                <table className="w-full data-table">
+                  <thead>
+                    <tr>
+                      <th className="text-left text-xs font-semibold uppercase text-gray-400 pb-2">Vehicle</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">Revenue (₹)</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">Cost (₹)</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">ROI (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roiData.vehicles.map((v) => (
+                      <tr key={v.vehicleId} className="border-t border-white/5">
+                        <td className="py-2.5">
+                          <p className="font-semibold text-white text-sm">{v.name}</p>
+                          <p className="text-xs text-gray-500">{v.regNumber}</p>
+                        </td>
+                        <td className="text-right py-2.5 text-sm text-green-400">₹{v.revenue.toLocaleString('en-IN')}</td>
+                        <td className="text-right py-2.5 text-sm text-gray-400">₹{(v.fuelCost + v.maintenanceCost).toLocaleString('en-IN')}</td>
+                        <td className={`text-right py-2.5 text-sm font-bold ${v.roi >= 0 ? 'text-teal-400' : 'text-red-400'}`}>
+                          {v.roi}%
+                        </td>
+                      </tr>
+                    ))}
+                    {roiData.vehicles.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center py-6 text-gray-500 text-sm">No vehicles found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ROI Bar Chart */}
+              <div className="glass-card p-5">
+                <h3 className="text-base font-semibold text-white mb-4">ROI % per Vehicle</h3>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={roiData.vehicles}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1E3766" />
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#9CA3AF', fontSize: 11 }} label={{ value: 'ROI %', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }} />
+                    <ChartTooltip formatter={(v: number) => `${v}%`} />
+                    <Bar dataKey="roi" fill="#10B981" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'cost' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Costliest vehicles bar chart */}
+              <div className="glass-card p-5">
+                <h3 className="text-base font-semibold text-white mb-4">Fuel vs Maintenance Cost</h3>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={costData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1E3766" />
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+                    <ChartTooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
+                    <Legend />
+                    <Bar dataKey="fuelCost" stackId="a" fill="#F59E0B" name="Fuel Cost" />
+                    <Bar dataKey="maintenanceCost" stackId="a" fill="#EF4444" name="Maintenance" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Cost Table */}
+              <div className="glass-card p-5 overflow-x-auto">
+                <h3 className="text-base font-semibold text-white mb-4">Cost Breakdown</h3>
+                <table className="w-full data-table">
+                  <thead>
+                    <tr>
+                      <th className="text-left text-xs font-semibold uppercase text-gray-400 pb-2">Vehicle</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">Fuel (₹)</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">Maintenance (₹)</th>
+                      <th className="text-right text-xs font-semibold uppercase text-gray-400 pb-2">Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costData.map((v) => (
+                      <tr key={v.id} className="border-t border-white/5">
+                        <td className="py-2.5">
+                          <p className="font-semibold text-white text-sm">{v.name}</p>
+                          <p className="text-xs text-gray-500">{v.regNumber}</p>
+                        </td>
+                        <td className="text-right py-2.5 text-sm text-gray-300">₹{v.fuelCost.toLocaleString('en-IN')}</td>
+                        <td className="text-right py-2.5 text-sm text-gray-300">₹{v.maintenanceCost.toLocaleString('en-IN')}</td>
+                        <td className="text-right py-2.5 text-sm font-bold text-white">₹{v.totalCost.toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                    {costData.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center py-6 text-gray-500 text-sm">No cost logs recorded.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'revenue' && (
+            <div className="glass-card p-5">
+              <h3 className="text-base font-semibold text-white mb-4">Monthly Revenue Trends</h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1E3766" />
+                  <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <ChartTooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={2} name="Revenue (₹)" />
+                  <Line type="monotone" dataKey="trips" stroke="#10B981" strokeWidth={2} name="Trips Completed" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab === 'safety' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KPICard title="Avg Safety Score" value={85} icon="⭐" />
-            <KPICard title="Critical Alerts" value={12} icon="⚠️" />
-            <KPICard title="Compliant Drivers" value="2 / 3" icon="👤" />
-          </div>
-          <Card>
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Driver Safety Ratings & Alerts</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={safetyReportsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <ChartTooltip />
-                <Legend />
-                <Bar dataKey="score" fill="#1F7A43" name="Safety Score" />
-                <Bar dataKey="alerts" fill="#B42334" name="Critical Alerts" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'financial' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KPICard title="Total Income" value={formatCurrency(2030000)} icon="💰" />
-            <KPICard title="Total Outflow" value={formatCurrency(1075000)} icon="📈" />
-            <KPICard title="Net Profit" value={formatCurrency(955000)} icon="📊" />
-          </div>
-          <Card>
-            <h2 className="text-lg font-bold text-light-primary-text dark:text-dark-primary-text mb-4">Revenue vs Expense Logs</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={financialReportsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <ChartTooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#1F7A43" strokeWidth={2} name="Revenue" />
-                <Line type="monotone" dataKey="expenses" stroke="#B42334" strokeWidth={2} name="Expenses" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
-      )}
-    </MainLayout>
+    </div>
   );
 };

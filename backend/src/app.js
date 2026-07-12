@@ -8,7 +8,8 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
 
-const { apiLimiter }      = require('./middleware/rateLimit.middleware');
+const { apiLimiter, dashLimiter } = require('./middleware/rateLimit.middleware');
+
 const { errorHandler, notFoundHandler } = require('./middleware/error.middleware');
 const logger              = require('./utils/logger');
 
@@ -23,6 +24,7 @@ const fuelRoutes        = require('./modules/fuel/fuel.routes');
 const expenseRoutes     = require('./modules/expenses/expense.routes');
 const costRoutes        = require('./modules/cost/cost.routes');
 const analyticsRoutes   = require('./modules/analytics/analytics.routes');
+const dashboardRoutes   = require('./modules/analytics/dashboard.routes');
 
 const app = express();
 
@@ -67,6 +69,8 @@ app.use('/api/fuel-logs',   fuelRoutes);
 app.use('/api/expenses',    expenseRoutes);
 app.use('/api/operational-cost', costRoutes);
 app.use('/api/analytics',   analyticsRoutes);
+app.use('/api/dashboard',   dashLimiter, dashboardRoutes);
+
 
 // ── Error Handling (must be last) ────────────────────────────────────────────
 app.use(notFoundHandler);

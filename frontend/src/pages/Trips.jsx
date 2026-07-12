@@ -228,8 +228,9 @@ export default function Trips() {
   };
 
   // ── Render helpers ────────────────────────────────────────────────────────
-  const inputClass = 'w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors';
+  const inputClass = 'input-field';
   const labelClass = 'block text-xs font-medium text-gray-400 mb-1';
+
 
   const TripForm = ({ fd, setFd, onSubmit, title, submitLabel }) => {
     const sv = getSelectedVehicle(fd.vehicleId);

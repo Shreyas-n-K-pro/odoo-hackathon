@@ -27,6 +27,7 @@ import Fuel from './pages/Fuel';
 import Settings from './pages/Settings';
 // @ts-ignore
 import { Analytics } from './pages/StubPages';
+import { ReportsPage } from './pages/ReportsPage';
 
 import './index.css';
 
@@ -62,7 +63,9 @@ function App() {
             <Route path="/fuel" element={<AppShell><Fuel /></AppShell>} />
             <Route path="/fuel-logs" element={<AppShell><Fuel /></AppShell>} />
             <Route path="/expenses" element={<AppShell><Fuel /></AppShell>} />
-            <Route path="/analytics" element={<AppShell><Analytics /></AppShell>} />
+            <Route path="/analytics" element={<AppShell><ReportsPage /></AppShell>} />
+            <Route path="/reports" element={<AppShell><ReportsPage /></AppShell>} />
+            <Route path="/intelligence" element={<AppShell><ReportsPage /></AppShell>} />
             <Route path="/settings" element={<AppShell><Settings /></AppShell>} />
           </Route>
 
